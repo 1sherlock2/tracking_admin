@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import AuthPhonePage from "./pages/AuthPhonePage";
+import DevicesPage from "./pages/DevicesPage";
 import LoginPage from "./pages/LoginPage";
 import RoutesPage from "./pages/RoutesPage";
 import UsersPage from "./pages/UsersPage";
@@ -29,6 +31,9 @@ function AppRoutes() {
         <Route index element={<Navigate to="/users" replace />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/routes" element={<RoutesPage />} />
+        <Route path="/devices" element={<DevicesPage />} />
+        <Route path="/devices/:deviceId" element={<DevicesPage />} />
+        <Route path="/auth-phones" element={<AuthPhonePage />} />
         <Route path="*" element={<Navigate to="/users" replace />} />
       </Route>
     </Routes>

@@ -9,8 +9,8 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, ChevronsUpDown, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Check, ChevronDown, ChevronUp, ChevronsUpDown, Pencil, Search, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import type { AdminUser } from "../api/types";
 import { usersApi } from "../api/users";
 
@@ -42,6 +42,101 @@ function BlockButton({
   );
 }
 
+// ─── EditPhoneCell ────────────────────────────────────────────────────────────
+
+function EditPhoneCell({
+  user,
+  onSave,
+}: {
+  user: AdminUser;
+  onSave: (id: number, phone: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(user.phone);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleEdit = () => {
+    setValue(user.phone);
+    setError(null);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const handleCancel = () => {
+    setEditing(false);
+    setError(null);
+  };
+
+  const handleSave = async () => {
+    const phone = value.trim();
+    if (!phone) return setError("Введите номер");
+    if (phone === user.phone) return setEditing(false);
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(user.id, phone);
+      setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSave();
+    if (e.key === "Escape") handleCancel();
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={handleEdit}
+        className="group flex items-center gap-1.5 rounded px-1 py-0.5 text-left transition hover:bg-gray-800"
+      >
+        <span>{user.phone}</span>
+        <Pencil size={12} className="text-gray-600 opacity-0 transition group-hover:opacity-100" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1">
+        <input
+          ref={inputRef}
+          type="tel"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={saving}
+          className="w-40 rounded border border-gray-600 bg-gray-800 px-2 py-0.5 text-sm text-white outline-none focus:border-blue-500 disabled:opacity-50"
+        />
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded p-1 text-green-400 hover:bg-green-900/30 disabled:opacity-50"
+        >
+          <Check size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={handleCancel}
+          disabled={saving}
+          className="rounded p-1 text-gray-400 hover:bg-gray-800 disabled:opacity-50"
+        >
+          <X size={14} />
+        </button>
+      </div>
+      {error && <span className="text-xs text-red-400">{error}</span>}
+    </div>
+  );
+}
+
 export default function UsersPage() {
   const queryClient = useQueryClient();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -62,10 +157,23 @@ export default function UsersPage() {
     },
   });
 
+  const handlePhoneSave = async (id: number, phone: string) => {
+    const updated = await usersApi.changePhone(id, phone);
+    queryClient.setQueryData<AdminUser[]>(["admin-users"], (prev) =>
+      prev?.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)),
+    );
+  };
+
   const columns = useMemo<ColumnDef<AdminUser>[]>(
     () => [
       { accessorKey: "id", header: "ID", size: 60 },
-      { accessorKey: "phone", header: "Телефон" },
+      {
+        accessorKey: "phone",
+        header: "Телефон",
+        cell: ({ row }) => (
+          <EditPhoneCell user={row.original} onSave={handlePhoneSave} />
+        ),
+      },
       {
         accessorKey: "deviceId",
         header: "Устройство",
@@ -119,6 +227,7 @@ export default function UsersPage() {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [toggleBlock],
   );
 
@@ -237,7 +346,7 @@ export default function UsersPage() {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-medium text-white">{u.phone}</p>
+                  <EditPhoneCell user={u} onSave={handlePhoneSave} />
                   <p className="mt-0.5 font-mono text-xs text-gray-400">
                     {u.deviceId ?? "Нет устройства"}
                   </p>

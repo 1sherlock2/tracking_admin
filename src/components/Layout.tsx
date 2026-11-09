@@ -1,4 +1,4 @@
-import { Bus, LogOut, Menu, Users, X } from "lucide-react";
+import { Bus, Cpu, LogOut, Menu, Phone, Users, X } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -6,6 +6,8 @@ import { useAuth } from "../context/AuthContext";
 const NAV_ITEMS = [
   { to: "/users", label: "Пользователи", Icon: Users },
   { to: "/routes", label: "Маршруты", Icon: Bus },
+  { to: "/devices", label: "Устройства", Icon: Cpu },
+  { to: "/auth-phones", label: "Номера авторизации", Icon: Phone },
 ];
 
 function NavItem({

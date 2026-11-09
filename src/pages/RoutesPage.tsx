@@ -1,25 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type ColumnDef,
-  type SortingState,
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    useReactTable,
+    type ColumnDef,
+    type RowSelectionState,
+    type SortingState,
 } from "@tanstack/react-table";
 import {
-  ChevronDown,
-  ChevronUp,
-  ChevronsUpDown,
-  Plus,
-  Search,
-  Trash2,
-  X,
+    ChevronDown,
+    ChevronUp,
+    ChevronsUpDown,
+    Plus,
+    Search,
+    Trash2,
+    X,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { routesApi } from "../api/routes";
+import { Link } from "react-router-dom";
+import { devicesApi, routesApi } from "../api/routes";
 import type { CreateRoutePayload, RouteItem } from "../api/types";
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
@@ -215,11 +217,20 @@ export default function RoutesPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showDialog, setShowDialog] = useState(false);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const { data = [], isLoading, error } = useQuery({
     queryKey: ["admin-routes"],
     queryFn: routesApi.list,
   });
+  const { data: devices = [] } = useQuery({
+    queryKey: ["admin-devices"],
+    queryFn: devicesApi.list,
+  });
+  const devicesByTrackerId = useMemo(
+    () => new Map(devices.map((device) => [device.deviceId, device])),
+    [devices],
+  );
 
   const filteredData = useMemo(() => {
     const search = globalFilter.toLowerCase().trim();
@@ -231,9 +242,17 @@ export default function RoutesPage() {
         (r.carrier_last_name ?? "").toLowerCase().includes(search) ||
         (r.carrier_first_name ?? "").toLowerCase().includes(search) ||
         (r.carrier_phone ?? "").includes(search) ||
-        r.deviceIds.some((id) => String(id).includes(search)),
+        r.deviceIds.some((id) => {
+          const device = devicesByTrackerId.get(id);
+          return (
+            String(id).includes(search) ||
+            (device?.carrierFirstName ?? "").toLowerCase().includes(search) ||
+            (device?.carrierLastName ?? "").toLowerCase().includes(search) ||
+            (device?.carrierPhone ?? "").includes(search)
+          );
+        }),
     );
-  }, [data, globalFilter]);
+  }, [data, devicesByTrackerId, globalFilter]);
 
   const { mutate: removeRoute } = useMutation({
     mutationFn: routesApi.remove,
@@ -243,8 +262,42 @@ export default function RoutesPage() {
       ),
   });
 
+  const { mutate: removeManyRoutes, isPending: isRemoving } = useMutation({
+    mutationFn: routesApi.removeMany,
+    onSuccess: (_, ids) => {
+      queryClient.setQueryData<RouteItem[]>(["admin-routes"], (prev) =>
+        prev?.filter((r) => !ids.includes(r.id)),
+      );
+      setRowSelection({});
+    },
+  });
+
   const columns = useMemo<ColumnDef<RouteItem>[]>(
     () => [
+      {
+        id: "select",
+        size: 40,
+        header: ({ table }) => (
+          <input
+            type="checkbox"
+            className="rounded border-gray-600 bg-gray-800 accent-blue-500"
+            checked={table.getIsAllPageRowsSelected()}
+            ref={(el) => {
+              if (el) el.indeterminate = table.getIsSomePageRowsSelected();
+            }}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            className="rounded border-gray-600 bg-gray-800 accent-blue-500"
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ),
+      },
       { accessorKey: "number", header: "№", size: 60 },
       { accessorKey: "name", header: "Название" },
       {
@@ -279,15 +332,28 @@ export default function RoutesPage() {
           const ids = getValue<number[]>();
           if (!ids.length) return <span className="text-gray-500">—</span>;
           return (
-            <div className="flex flex-wrap gap-1">
-              {ids.map((id) => (
-                <span
-                  key={id}
-                  className="rounded bg-blue-900/40 px-1.5 py-0.5 font-mono text-xs text-blue-400"
-                >
-                  {id}
-                </span>
-              ))}
+            <div className="space-y-2">
+              {ids.map((id) => {
+                const device = devicesByTrackerId.get(id);
+                const carrierName = [device?.carrierLastName, device?.carrierFirstName]
+                  .filter(Boolean)
+                  .join(" ");
+                return (
+                  <div key={id} className="flex flex-col gap-0.5">
+                    <Link
+                      to={`/devices/${id}`}
+                      className="w-fit font-mono text-xs text-blue-400 hover:underline"
+                    >
+                      {id}
+                    </Link>
+                    {(carrierName || device?.carrierPhone) && (
+                      <span className="text-xs text-gray-400">
+                        {[carrierName, device?.carrierPhone].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         },
@@ -317,14 +383,20 @@ export default function RoutesPage() {
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting },
+    state: { sorting, rowSelection },
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 20 } },
   });
+
+  const selectedIds = table
+    .getSelectedRowModel()
+    .rows.map((r) => r.original.id);
 
   if (isLoading) {
     return (
@@ -347,14 +419,35 @@ export default function RoutesPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-bold">Маршруты и устройства</h1>
-        <button
-          type="button"
-          onClick={() => setShowDialog(true)}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
-        >
-          <Plus size={16} />
-          Новый маршрут
-        </button>
+        <div className="flex items-center gap-2">
+          {selectedIds.length > 0 && (
+            <button
+              type="button"
+              disabled={isRemoving}
+              onClick={() => {
+                if (
+                  confirm(
+                    `Удалить ${selectedIds.length} маршрут${selectedIds.length === 1 ? "" : selectedIds.length < 5 ? "а" : "ов"}?`,
+                  )
+                ) {
+                  removeManyRoutes(selectedIds);
+                }
+              }}
+              className="flex items-center gap-2 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
+            >
+              <Trash2 size={16} />
+              Удалить ({selectedIds.length})
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowDialog(true)}
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+          >
+            <Plus size={16} />
+            Новый маршрут
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -441,35 +534,43 @@ export default function RoutesPage() {
             return (
               <div
                 key={r.id}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-4"
+                className={`rounded-xl border bg-gray-900 p-4 transition-colors ${row.getIsSelected() ? "border-blue-600" : "border-gray-800"}`}
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold text-white">
-                      <span className="mr-2 rounded bg-blue-900/40 px-1.5 py-0.5 text-xs text-blue-400">
-                        №{r.number}
-                      </span>
-                      {r.name}
-                    </p>
-                    {(r.carrier_first_name || r.carrier_last_name || r.carrier_phone) && (
-                      <div className="mt-1.5">
-                        {(r.carrier_first_name || r.carrier_last_name) && (
-                          <p className="text-xs text-gray-300">
-                            {[r.carrier_last_name, r.carrier_first_name]
-                              .filter(Boolean)
-                              .join(" ")}
-                          </p>
-                        )}
-                        {r.carrier_phone && (
-                          <a
-                            href={`tel:${r.carrier_phone}`}
-                            className="text-xs text-blue-400 hover:underline"
-                          >
-                            {r.carrier_phone}
-                          </a>
-                        )}
-                      </div>
-                    )}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 rounded border-gray-600 bg-gray-800 accent-blue-500"
+                      checked={row.getIsSelected()}
+                      onChange={row.getToggleSelectedHandler()}
+                    />
+                    <div>
+                      <p className="font-semibold text-white">
+                        <span className="mr-2 rounded bg-blue-900/40 px-1.5 py-0.5 text-xs text-blue-400">
+                          №{r.number}
+                        </span>
+                        {r.name}
+                      </p>
+                      {(r.carrier_first_name || r.carrier_last_name || r.carrier_phone) && (
+                        <div className="mt-1.5">
+                          {(r.carrier_first_name || r.carrier_last_name) && (
+                            <p className="text-xs text-gray-300">
+                              {[r.carrier_last_name, r.carrier_first_name]
+                                .filter(Boolean)
+                                .join(" ")}
+                            </p>
+                          )}
+                          {r.carrier_phone && (
+                            <a
+                              href={`tel:${r.carrier_phone}`}
+                              className="text-xs text-blue-400 hover:underline"
+                            >
+                              {r.carrier_phone}
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -485,14 +586,24 @@ export default function RoutesPage() {
                 </div>
                 {r.deviceIds.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {r.deviceIds.map((id) => (
-                      <span
-                        key={id}
-                        className="rounded bg-blue-900/40 px-1.5 py-0.5 font-mono text-xs text-blue-400"
-                      >
-                        {id}
-                      </span>
-                    ))}
+                    {r.deviceIds.map((id) => {
+                      const device = devicesByTrackerId.get(id);
+                      const carrierName = [device?.carrierLastName, device?.carrierFirstName]
+                        .filter(Boolean)
+                        .join(" ");
+                      return (
+                        <div key={id} className="flex flex-col gap-0.5 rounded bg-gray-800/70 px-2 py-1">
+                          <Link to={`/devices/${id}`} className="font-mono text-xs text-blue-400 hover:underline">
+                            {id}
+                          </Link>
+                          {(carrierName || device?.carrierPhone) && (
+                            <span className="text-xs text-gray-400">
+                              {[carrierName, device?.carrierPhone].filter(Boolean).join(" · ")}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
