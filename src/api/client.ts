@@ -1,6 +1,14 @@
-// Базовый API-клиент. BASE берётся из VITE_API_URL (.env)
-
-const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+// В dev localhost обслуживает Vite proxy, чтобы API был доступен с телефона.
+const configuredBase = import.meta.env.VITE_API_URL;
+const isLoopbackBase = configuredBase
+  ? ["localhost", "127.0.0.1", "0.0.0.0", "[::1]"].includes(
+      new URL(configuredBase).hostname,
+    )
+  : false;
+const BASE =
+  import.meta.env.DEV && (!configuredBase || isLoopbackBase)
+    ? ""
+    : configuredBase ?? "http://localhost:4000";
 
 function getToken(): string | null {
   return localStorage.getItem("admin_token");

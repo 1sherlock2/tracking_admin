@@ -26,6 +26,23 @@ export interface RouteItem {
   carrier_phone: string;
 }
 
+export type RouteGeometry =
+  | { type: "LineString"; coordinates: number[][] }
+  | { type: "MultiLineString"; coordinates: number[][][] };
+
+export interface RouteGeometryItem {
+  id: number;
+  number: number;
+  name: string;
+  color: string;
+  geometry: RouteGeometry | null;
+}
+
+export interface UpdateRouteGeometryPayload {
+  geometry: Extract<RouteGeometry, { type: "MultiLineString" }>;
+  color: string;
+}
+
 export interface Device {
   id: number;
   deviceId: number;
@@ -49,7 +66,7 @@ export interface DevicePayload {
 export interface CreateRoutePayload {
   number: number;
   name: string;
-  deviceId: number;
+  deviceId?: number;
   carrier_first_name: string;
   carrier_last_name: string;
   carrier_phone: string;

@@ -1,5 +1,12 @@
 import { api } from "./client";
-import type { CreateRoutePayload, Device, DevicePayload, RouteItem } from "./types";
+import type {
+    CreateRoutePayload,
+    Device,
+    DevicePayload,
+    RouteGeometryItem,
+    RouteItem,
+    UpdateRouteGeometryPayload,
+} from "./types";
 
 export const routesApi = {
   list: () => api.get<RouteItem[]>("/admin/routes"),
@@ -7,6 +14,12 @@ export const routesApi = {
     api.post<RouteItem>("/admin/routes", payload),
   remove: (id: number) => api.delete<void>(`/admin/routes/${id}`),
   removeMany: (ids: number[]) => api.delete<void>("/admin/routes", { ids }),
+  getGeometry: (id: number) =>
+    api.get<RouteGeometryItem>(`/admin/routes/${id}/geometry`),
+  updateGeometry: (id: number, payload: UpdateRouteGeometryPayload) =>
+    api.patch<RouteGeometryItem>(`/admin/routes/${id}/geometry`, payload),
+  removeGeometry: (id: number) =>
+    api.delete<void>(`/admin/routes/${id}/geometry`),
 };
 
 export const devicesApi = {

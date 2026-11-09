@@ -1,23 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
-    useReactTable,
-    type ColumnDef,
-    type RowSelectionState,
-    type SortingState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type RowSelectionState,
+  type SortingState,
 } from "@tanstack/react-table";
 import {
-    ChevronDown,
-    ChevronUp,
-    ChevronsUpDown,
-    Plus,
-    Search,
-    Trash2,
-    X,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  MapPinned,
+  Plus,
+  Search,
+  Trash2,
+  X,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -42,7 +43,6 @@ function AddRouteDialog({ onClose, onSuccess }: AddRouteDialogProps) {
   const [form, setForm] = useState<CreateRoutePayload>({
     number: 0,
     name: "",
-    deviceId: 0,
     carrier_first_name: "",
     carrier_last_name: "",
     carrier_phone: "",
@@ -64,7 +64,6 @@ function AddRouteDialog({ onClose, onSuccess }: AddRouteDialogProps) {
     setFormError(null);
     if (!form.name.trim()) return setFormError("Введите название маршрута");
     if (!form.number) return setFormError("Введите номер маршрута");
-    if (!form.deviceId) return setFormError("Введите ID устройства");
     if (!form.carrier_first_name.trim()) return setFormError("Введите имя перевозчика");
     if (!form.carrier_last_name.trim()) return setFormError("Введите фамилию перевозчика");
     if (!form.carrier_phone.trim()) return setFormError("Введите номер телефона перевозчика");
@@ -123,16 +122,19 @@ function AddRouteDialog({ onClose, onSuccess }: AddRouteDialogProps) {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-300">
-              ID устройства (device_id)
+              ID устройства (необязательно)
             </label>
             <input
               type="number"
               min={1}
-              value={form.deviceId || ""}
+              value={form.deviceId ?? ""}
               onChange={(e) =>
-                setForm((f) => ({ ...f, deviceId: Number(e.target.value) }))
+                setForm((f) => ({
+                  ...f,
+                  deviceId: e.target.value ? Number(e.target.value) : undefined,
+                }))
               }
-              placeholder="Например: 072109952416"
+              placeholder="Можно добавить позже"
               className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-blue-500"
             />
           </div>
@@ -361,19 +363,29 @@ export default function RoutesPage() {
       {
         id: "actions",
         header: "",
-        size: 60,
+        size: 96,
         cell: ({ row }) => (
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm(`Удалить маршрут №${row.original.number}?`)) {
-                removeRoute(row.original.id);
-              }
-            }}
-            className="rounded-lg p-1.5 text-gray-500 transition hover:bg-red-900/30 hover:text-red-400"
-          >
-            <Trash2 size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            <Link
+              to={`/routes/${row.original.id}/map`}
+              title="Редактировать линию маршрута"
+              className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white"
+            >
+              <MapPinned size={16} />
+            </Link>
+            <button
+              type="button"
+              title="Удалить маршрут"
+              onClick={() => {
+                if (confirm(`Удалить маршрут №${row.original.number}?`)) {
+                  removeRoute(row.original.id);
+                }
+              }}
+              className="rounded-lg p-1.5 text-gray-500 transition hover:bg-red-900/30 hover:text-red-400"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         ),
       },
     ],
@@ -572,17 +584,27 @@ export default function RoutesPage() {
                       )}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm(`Удалить маршрут №${r.number}?`)) {
-                        removeRoute(r.id);
-                      }
-                    }}
-                    className="rounded-lg p-1.5 text-gray-500 hover:bg-red-900/30 hover:text-red-400"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <Link
+                      to={`/routes/${r.id}/map`}
+                      title="Редактировать линию маршрута"
+                      className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-800 hover:text-white"
+                    >
+                      <MapPinned size={16} />
+                    </Link>
+                    <button
+                      type="button"
+                      title="Удалить маршрут"
+                      onClick={() => {
+                        if (confirm(`Удалить маршрут №${r.number}?`)) {
+                          removeRoute(r.id);
+                        }
+                      }}
+                      className="rounded-lg p-1.5 text-gray-500 hover:bg-red-900/30 hover:text-red-400"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
                 {r.deviceIds.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
