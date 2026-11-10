@@ -43,9 +43,6 @@ function AddRouteDialog({ onClose, onSuccess }: AddRouteDialogProps) {
   const [form, setForm] = useState<CreateRoutePayload>({
     number: 0,
     name: "",
-    carrier_first_name: "",
-    carrier_last_name: "",
-    carrier_phone: "",
   });
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -64,9 +61,6 @@ function AddRouteDialog({ onClose, onSuccess }: AddRouteDialogProps) {
     setFormError(null);
     if (!form.name.trim()) return setFormError("Введите название маршрута");
     if (!form.number) return setFormError("Введите номер маршрута");
-    if (!form.carrier_first_name.trim()) return setFormError("Введите имя перевозчика");
-    if (!form.carrier_last_name.trim()) return setFormError("Введите фамилию перевозчика");
-    if (!form.carrier_phone.trim()) return setFormError("Введите номер телефона перевозчика");
     mutate(form);
   };
 
@@ -135,51 +129,6 @@ function AddRouteDialog({ onClose, onSuccess }: AddRouteDialogProps) {
                 }))
               }
               placeholder="Можно добавить позже"
-              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-300">
-              Имя перевозчика
-            </label>
-            <input
-              type="text"
-              value={form.carrier_first_name}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, carrier_first_name: e.target.value }))
-              }
-              placeholder="Например: Иван"
-              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-300">
-              Фамилия перевозчика
-            </label>
-            <input
-              type="text"
-              value={form.carrier_last_name}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, carrier_last_name: e.target.value }))
-              }
-              placeholder="Например: Иванов"
-              className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-300">
-              Телефон перевозчика
-            </label>
-            <input
-              type="tel"
-              value={form.carrier_phone}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, carrier_phone: e.target.value }))
-              }
-              placeholder="Например: +7 900 000-00-00"
               className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-blue-500"
             />
           </div>

@@ -67,7 +67,4 @@ export interface CreateRoutePayload {
   number: number;
   name: string;
   deviceId?: number;
-  carrier_first_name: string;
-  carrier_last_name: string;
-  carrier_phone: string;
 }
