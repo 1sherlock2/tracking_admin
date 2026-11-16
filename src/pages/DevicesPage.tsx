@@ -279,7 +279,7 @@ export default function DevicesPage() {
           <h1 className="text-xl font-semibold">Устройства</h1>
           <p className="mt-1 text-sm text-gray-500">Всего: {devices.length}</p>
         </div>
-        <button type="button" onClick={() => setDialogDevice(null)} className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">
+        <button type="button" onClick={() => setDialogDevice(null)} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 sm:w-auto">
           <Plus size={16} /> Добавить устройство
         </button>
       </div>
@@ -287,7 +287,41 @@ export default function DevicesPage() {
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по ID, перевозчику, маршруту..." className="w-full rounded-md border border-gray-700 bg-gray-900 py-2 pl-9 pr-4 text-sm text-white outline-none placeholder:text-gray-500 focus:border-blue-500" />
       </div>
-      <div className="overflow-x-auto rounded-md border border-gray-800">
+      <div className="space-y-3 sm:hidden">
+        {filteredDevices.map((device) => {
+          const route = routes.find((item) => item.id === device.routeId);
+          const carrier = [device.carrierLastName, device.carrierFirstName].filter(Boolean).join(" ");
+          return (
+            <article key={device.id} className="rounded-md border border-gray-800 bg-gray-900/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <Link to={`/devices/${device.deviceId}`} className="font-mono text-lg font-semibold text-blue-400 hover:underline">{device.deviceId}</Link>
+                  <p className="mt-1 truncate text-sm text-gray-300">{route ? `№${route.number} · ${route.name}` : "Маршрут не назначен"}</p>
+                </div>
+                <span className={`shrink-0 pt-1 text-xs ${device.status ? "text-emerald-400" : "text-gray-500"}`}>{device.status ? "Активно" : "Неактивно"}</span>
+              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-gray-800 pt-3">
+                <div className="min-w-0">
+                  <dt className="text-xs text-gray-500">Перевозчик</dt>
+                  <dd className="mt-1 truncate text-sm text-gray-200">{carrier || "—"}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs text-gray-500">Телефон</dt>
+                  <dd className="mt-1 break-words text-sm text-gray-200">{device.carrierPhone || "—"}</dd>
+                </div>
+              </dl>
+              <div className="mt-3 flex justify-end gap-1 border-t border-gray-800 pt-2">
+                <button type="button" title="Изменить" aria-label={`Изменить устройство ${device.deviceId}`} onClick={() => setDialogDevice(device)} className="rounded p-2 text-gray-400 hover:bg-gray-800 hover:text-white"><Pencil size={16} /></button>
+                <button type="button" title="Удалить" aria-label={`Удалить устройство ${device.deviceId}`} disabled={deleteMutation.isPending} onClick={() => {
+                  if (confirm(`Удалить устройство ${device.deviceId}?`)) deleteMutation.mutate(device.id);
+                }} className="rounded p-2 text-gray-500 hover:bg-red-950 hover:text-red-300 disabled:opacity-50"><Trash2 size={16} /></button>
+              </div>
+            </article>
+          );
+        })}
+        {filteredDevices.length === 0 && <p className="rounded-md border border-gray-800 px-4 py-12 text-center text-sm text-gray-500">Устройства не найдены</p>}
+      </div>
+      <div className="hidden overflow-x-auto rounded-md border border-gray-800 sm:block">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="border-b border-gray-800 bg-gray-900 text-xs uppercase text-gray-500">
             <tr>
